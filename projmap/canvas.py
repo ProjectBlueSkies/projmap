@@ -1,5 +1,5 @@
 import numpy as np
-from PySide6.QtCore import Qt, QPointF
+from PySide6.QtCore import Qt, QPointF, Signal
 from PySide6.QtGui import QBrush, QColor, QPainter, QPen, QPolygonF, QTransform
 from PySide6.QtWidgets import QWidget
 
@@ -12,6 +12,8 @@ HANDLE_R = 9
 
 
 class Canvas(QWidget):
+    quad_changed = Signal()
+
     def __init__(self, parent=None):
         super().__init__(parent)
         self.setMinimumSize(640, 360)
@@ -101,6 +103,7 @@ class Canvas(QWidget):
                 np.array([event.position().x(), event.position().y()])
             )
             self.update()
+            self.quad_changed.emit()
 
     def mouseReleaseEvent(self, event):
         if event.button() == Qt.MouseButton.LeftButton:

@@ -36,7 +36,7 @@ class ImageSource:
         if self._tex is not None:
             return
         img = Image.open(self.path).convert('RGB')
-        arr = np.asarray(img)
+        arr = np.asarray(img)[::-1].copy()  # flip Y for OpenGL convention
         self._tex = ctx.texture((img.width, img.height), 3, arr.tobytes())
         self._tex.filter = (moderngl.LINEAR, moderngl.LINEAR)
 
@@ -73,6 +73,7 @@ class VideoSource:
             ret, frame = self._cap.read()
         if ret:
             frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+            frame = frame[::-1]  # flip Y for OpenGL convention
             h, w = frame.shape[:2]
             if self._tex is None:
                 self._tex = ctx.texture((w, h), 3)
@@ -112,6 +113,7 @@ class TextSource:
         x = (_TEXT_W - (bbox[2] - bbox[0])) // 2 - bbox[0]
         y = (_TEXT_H - (bbox[3] - bbox[1])) // 2 - bbox[1]
         draw.multiline_text((x, y), text, fill=self.color, font=font, align=self.align)
+        img = img.transpose(Image.Transpose.FLIP_TOP_BOTTOM)  # flip Y for OpenGL convention
         data = img.tobytes()
         if self._tex is None:
             self._tex = ctx.texture((_TEXT_W, _TEXT_H), 4, data)

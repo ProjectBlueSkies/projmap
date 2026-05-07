@@ -62,13 +62,23 @@ class _GenerateWorker(QThread):
     def run(self):
         try:
             import os
+            from pathlib import Path
             import anthropic
-            if not os.environ.get("ANTHROPIC_API_KEY"):
+
+            api_key = os.environ.get("ANTHROPIC_API_KEY")
+            if not api_key:
+                config = Path.home() / ".config" / "projmap" / "config"
+                if config.exists():
+                    for line in config.read_text().splitlines():
+                        if line.startswith("ANTHROPIC_API_KEY="):
+                            api_key = line.split("=", 1)[1].strip()
+                            break
+            if not api_key:
                 self.error.emit(
-                    "ANTHROPIC_API_KEY not set — export it before launching projmap"
+                    "ANTHROPIC_API_KEY not set — add it to ~/.config/projmap/config"
                 )
                 return
-            client = anthropic.Anthropic()
+            client = anthropic.Anthropic(api_key=api_key)
             msg = client.messages.create(
                 model="claude-opus-4-7",
                 max_tokens=2048,

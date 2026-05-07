@@ -123,7 +123,7 @@ class Renderer:
         self._out_fbo.use()
         self._ctx.clear(0, 0, 0)
         self._ctx.enable(moderngl.BLEND)
-        self._ctx.blend_func(moderngl.SRC_ALPHA, moderngl.ONE_MINUS_SRC_ALPHA)
+        self._ctx.blend_func = (moderngl.SRC_ALPHA, moderngl.ONE_MINUS_SRC_ALPHA)
         for surface in surfaces:
             self._render_surface(surface, time)
         self._ctx.disable(moderngl.BLEND)

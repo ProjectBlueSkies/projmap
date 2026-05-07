@@ -16,8 +16,8 @@ class OutputWindow(QMainWindow):
         self._label.setStyleSheet("background: black;")
         self.setCentralWidget(self._label)
 
-    def refresh(self):
-        pixmap = self._renderer.render(self._canvas.surfaces)
+    def refresh(self, time=0.0):
+        pixmap = self._renderer.render(self._canvas.surfaces, time)
         self._label.setPixmap(
             pixmap.scaled(
                 self._label.size(),

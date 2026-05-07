@@ -1,34 +1,92 @@
+import time as _time
+
+from PySide6.QtCore import QTimer
 from PySide6.QtGui import QAction, QActionGroup
-from PySide6.QtWidgets import QApplication, QMainWindow
+from PySide6.QtWidgets import (
+    QApplication, QHBoxLayout, QLabel, QListWidget, QMainWindow,
+    QSplitter, QVBoxLayout, QWidget,
+)
 
 from projmap.canvas import Canvas
 from projmap.output_window import OutputWindow
 from projmap.renderer import Renderer
+from projmap.shaders import BUILTIN_SHADERS
+
+
+class ShaderPanel(QWidget):
+    def __init__(self, canvas, parent=None):
+        super().__init__(parent)
+        self._canvas = canvas
+        layout = QVBoxLayout(self)
+        layout.setContentsMargins(6, 6, 6, 6)
+        layout.setSpacing(4)
+
+        layout.addWidget(QLabel("Source"))
+        self._list = QListWidget()
+        for s in BUILTIN_SHADERS:
+            self._list.addItem(s.name)
+        self._list.setCurrentRow(0)
+        self._list.currentRowChanged.connect(self._assign_shader)
+        layout.addWidget(self._list)
+
+        canvas.surface_selected.connect(self._sync_to_surface)
+
+    def _assign_shader(self, row):
+        if row < 0 or row >= len(BUILTIN_SHADERS):
+            return
+        surface = self._canvas.surfaces[self._canvas.active_idx]
+        surface.source = BUILTIN_SHADERS[row]
+
+    def _sync_to_surface(self, surface_idx):
+        surface = self._canvas.surfaces[surface_idx]
+        for i, s in enumerate(BUILTIN_SHADERS):
+            if s is surface.source:
+                self._list.blockSignals(True)
+                self._list.setCurrentRow(i)
+                self._list.blockSignals(False)
+                return
 
 
 class EditorWindow(QMainWindow):
     def __init__(self):
         super().__init__()
         self.setWindowTitle("projmap — editor")
-        self.resize(1280, 720)
+        self.resize(1440, 810)
 
         self.canvas = Canvas()
-        self.setCentralWidget(self.canvas)
+        self._shader_panel = ShaderPanel(self.canvas)
+        self._shader_panel.setFixedWidth(180)
+
+        splitter = QSplitter()
+        splitter.addWidget(self.canvas)
+        splitter.addWidget(self._shader_panel)
+        splitter.setStretchFactor(0, 1)
+        splitter.setStretchFactor(1, 0)
+        self.setCentralWidget(splitter)
 
         self._renderer = Renderer()
         self.output = OutputWindow(self.canvas, self._renderer)
-        self.canvas.scene_changed.connect(self.output.refresh)
         self.output.show()
         self.output.raise_()
-        self.output.refresh()
 
         self._build_menu()
+        self._start_time = _time.monotonic()
+        self._anim_timer = QTimer()
+        self._anim_timer.timeout.connect(self._tick)
+        self._anim_timer.start(16)
+
         self._update_status()
+        self.canvas.scene_changed.connect(self._update_status)
 
         app = QApplication.instance()
         app.screenAdded.connect(self._refresh_screens)
         app.screenRemoved.connect(self._refresh_screens)
-        self.canvas.scene_changed.connect(self._update_status)
+
+    def _elapsed(self):
+        return _time.monotonic() - self._start_time
+
+    def _tick(self):
+        self.output.refresh(self._elapsed())
 
     def _build_menu(self):
         surfaces_menu = self.menuBar().addMenu("Surfaces")
@@ -80,6 +138,7 @@ class EditorWindow(QMainWindow):
     def _update_status(self):
         n = len(self.canvas.surfaces)
         i = self.canvas.active_idx + 1
+        src = self.canvas.surfaces[self.canvas.active_idx].source.name
         self.statusBar().showMessage(
-            f"Surface {i} of {n}  —  N: add  Del: remove  Click surface to select"
+            f"Surface {i}/{n} · {src}  —  N: add  Del: remove  Click to select"
         )

@@ -21,6 +21,7 @@ def _point_in_quad(corners, px, py):
 
 class Canvas(QWidget):
     scene_changed = Signal()
+    surface_selected = Signal(int)  # emitted when active_idx changes
 
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -128,6 +129,7 @@ class Canvas(QWidget):
     def mousePressEvent(self, event):
         if event.button() == Qt.MouseButton.LeftButton:
             wx, wy = event.position().x(), event.position().y()
+            prev = self.active_idx
             hit = self._hit_handle(wx, wy)
             if hit is not None:
                 self.active_idx = hit[0]
@@ -137,6 +139,8 @@ class Canvas(QWidget):
                 if si is not None:
                     self.active_idx = si
                 self._dragging = None
+            if self.active_idx != prev:
+                self.surface_selected.emit(self.active_idx)
             self.update()
 
     def mouseMoveEvent(self, event):
@@ -168,6 +172,7 @@ class Canvas(QWidget):
         self.active_idx = len(self.surfaces) - 1
         self.update()
         self.scene_changed.emit()
+        self.surface_selected.emit(self.active_idx)
 
     def delete_active(self):
         if len(self.surfaces) <= 1:
@@ -176,3 +181,4 @@ class Canvas(QWidget):
         self.active_idx = min(self.active_idx, len(self.surfaces) - 1)
         self.update()
         self.scene_changed.emit()
+        self.surface_selected.emit(self.active_idx)

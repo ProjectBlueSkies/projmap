@@ -38,9 +38,11 @@ class ShaderPanel(QWidget):
         btn_new.clicked.connect(self._new_shader)
         layout.addWidget(btn_new)
 
-        btn_edit = QPushButton("Edit Shader…")
-        btn_edit.clicked.connect(self._edit_selected)
-        layout.addWidget(btn_edit)
+        self._btn_edit = QPushButton("Edit…")
+        self._btn_edit.clicked.connect(self._edit_selected)
+        layout.addWidget(self._btn_edit)
+
+        self._list.currentRowChanged.connect(self._update_edit_btn)
 
         btn_img = QPushButton("Load Image…")
         btn_img.clicked.connect(self._load_image)
@@ -69,10 +71,27 @@ class ShaderPanel(QWidget):
                 self._list.blockSignals(False)
                 return
 
+    def _update_edit_btn(self, row=None):
+        if row is None:
+            row = self._list.currentRow()
+        if 0 <= row < len(self._sources):
+            src = self._sources[row]
+            if isinstance(src, TextSource):
+                self._btn_edit.setText("Edit Text…")
+                self._btn_edit.setEnabled(True)
+                return
+            if hasattr(src, 'frag_code'):
+                self._btn_edit.setText("Edit Shader…")
+                self._btn_edit.setEnabled(True)
+                return
+        self._btn_edit.setText("Edit…")
+        self._btn_edit.setEnabled(False)
+
     def _add_source(self, source):
         self._sources.append(source)
         self._list.addItem(QListWidgetItem(source.name))
         self._list.setCurrentRow(len(self._sources) - 1)
+        self._update_edit_btn()
 
     def _new_shader(self):
         global _custom_count

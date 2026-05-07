@@ -57,12 +57,17 @@ def _deser_source(data):
             return BUILTIN_SHADERS[0]
         return VideoSource(p)
     if t == "text":
+        def _c(val, default):
+            v = list(val) if val is not None else list(default)
+            if len(v) == 3:
+                v.append(255)
+            return tuple(v)
         return TextSource(
             name=data.get("name", "Text"),
             text=data.get("text", "Hello"),
             font_size=data.get("font_size", 120),
-            color=tuple(data.get("color", [255, 255, 255])),
-            bg_color=tuple(data.get("bg_color", [0, 0, 0])),
+            color=_c(data.get("color"), [255, 255, 255, 255]),
+            bg_color=_c(data.get("bg_color"), [0, 0, 0, 255]),
             align=data.get("align", "center"),
         )
     return BUILTIN_SHADERS[0]

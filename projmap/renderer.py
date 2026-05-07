@@ -122,8 +122,11 @@ class Renderer:
     def render(self, surfaces, time=0.0):
         self._out_fbo.use()
         self._ctx.clear(0, 0, 0)
+        self._ctx.enable(moderngl.BLEND)
+        self._ctx.blend_func(moderngl.SRC_ALPHA, moderngl.ONE_MINUS_SRC_ALPHA)
         for surface in surfaces:
             self._render_surface(surface, time)
+        self._ctx.disable(moderngl.BLEND)
         raw = self._out_fbo.read(components=3)
         arr = np.frombuffer(raw, dtype=np.uint8).reshape(STAGE_H, STAGE_W, 3)
         arr = arr[::-1].copy()

@@ -1,5 +1,6 @@
 import numpy as np
 import moderngl
+from PySide6.QtCore import QTimer, Qt
 from PySide6.QtOpenGLWidgets import QOpenGLWidget
 from PySide6.QtWidgets import QMainWindow
 
@@ -88,15 +89,36 @@ class OutputWindow(QMainWindow):
         self.resize(960, 540)
         self.widget = OutputWidget(quad, self)
         self.setCentralWidget(self.widget)
+        self._pending_screen = None
 
     def send_to_screen(self, screen):
-        self.showNormal()
+        self._pending_screen = screen
+        if self.isFullScreen():
+            self.showNormal()
+            # Wayland is async — let the compositor process showNormal before
+            # we request fullscreen on a different output
+            QTimer.singleShot(150, self._apply_screen)
+        else:
+            self._apply_screen()
+
+    def _apply_screen(self):
+        screen = self._pending_screen
+        if screen is None:
+            return
         handle = self.windowHandle()
         if handle:
             handle.setScreen(screen)
-        self.setGeometry(screen.geometry())
+        self.raise_()
+        self.activateWindow()
         self.showFullScreen()
 
     def go_windowed(self):
+        self._pending_screen = None
         self.showNormal()
         self.resize(960, 540)
+        self.raise_()
+
+    def keyPressEvent(self, event):
+        if event.key() == Qt.Key.Key_Escape:
+            self.go_windowed()
+        super().keyPressEvent(event)

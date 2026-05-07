@@ -17,8 +17,10 @@ class EditorWindow(QMainWindow):
         self.output = OutputWindow(self.canvas.quad)
         self.canvas.quad_changed.connect(self.output.widget.update)
         self.output.show()
+        self.output.raise_()
 
         self._build_menu()
+        self.statusBar().showMessage("Output: windowed  —  Output > Send to Screen to route to projector")
 
         app = QApplication.instance()
         app.screenAdded.connect(self._refresh_screens)
@@ -35,7 +37,8 @@ class EditorWindow(QMainWindow):
         output_menu.addSeparator()
 
         windowed = QAction("Windowed", self)
-        windowed.triggered.connect(self.output.go_windowed)
+        windowed.setShortcut("Escape")
+        windowed.triggered.connect(self._go_windowed)
         output_menu.addAction(windowed)
 
     def _refresh_screens(self):
@@ -47,6 +50,16 @@ class EditorWindow(QMainWindow):
             geo = screen.geometry()
             label = f"Screen {i + 1}: {screen.name()}  {geo.width()}×{geo.height()}"
             action = QAction(label, self, checkable=True)
-            action.triggered.connect(lambda checked, s=screen: self.output.send_to_screen(s))
+            action.triggered.connect(lambda checked, s=screen, lbl=label: self._select_screen(s, lbl))
             self._screen_group.addAction(action)
             self._screen_menu.addAction(action)
+
+    def _select_screen(self, screen, label):
+        self.output.send_to_screen(screen)
+        self.statusBar().showMessage(f"Output: {label}  —  Esc to return to windowed")
+
+    def _go_windowed(self):
+        self.output.go_windowed()
+        self.statusBar().showMessage("Output: windowed")
+        for a in self._screen_group.actions():
+            a.setChecked(False)

@@ -4,11 +4,12 @@ from PySide6.QtWidgets import (
 )
 
 from projmap.shaders import BUILTIN_SHADERS, ShaderSource
-from projmap.sources import ImageSource, VideoSource
+from projmap.sources import ImageSource, TextSource, VideoSource
 
 _IMAGE_EXTS = "Images (*.png *.jpg *.jpeg *.bmp *.tif *.tiff *.webp)"
 _VIDEO_EXTS = "Video (*.mp4 *.mov *.avi *.mkv *.webm *.m4v)"
 _custom_count = 0
+_text_count = 0
 
 
 class ShaderPanel(QWidget):
@@ -49,6 +50,10 @@ class ShaderPanel(QWidget):
         btn_vid.clicked.connect(self._load_video)
         layout.addWidget(btn_vid)
 
+        btn_txt = QPushButton("Add Text…")
+        btn_txt.clicked.connect(self._new_text)
+        layout.addWidget(btn_txt)
+
         canvas.surface_selected.connect(self._sync)
 
     def _assign(self, row):
@@ -77,11 +82,21 @@ class ShaderPanel(QWidget):
         self._add_source(source)
         self._open_editor(source)
 
+    def _new_text(self):
+        global _text_count
+        _text_count += 1
+        source = TextSource(name=f"Text {_text_count}")
+        self._add_source(source)
+        self._open_text_editor(source)
+
     def _edit_selected(self):
         row = self._list.currentRow()
         if row < 0:
             return
         source = self._sources[row]
+        if isinstance(source, TextSource):
+            self._open_text_editor(source)
+            return
         if not hasattr(source, 'frag_code'):
             return  # image/video sources not editable
         # Built-in shaders: copy to a new custom source
@@ -90,9 +105,9 @@ class ShaderPanel(QWidget):
             _custom_count += 1
             source = ShaderSource(f"Custom {_custom_count} ({source.name})", source.frag_code)
             self._add_source(source)
-        self._open_editor(source)
+        self._open_shader_editor(source)
 
-    def _open_editor(self, source):
+    def _open_shader_editor(self, source):
         from projmap.shader_editor import ShaderEditorWindow
         sid = id(source)
         if sid in self._editors and self._editors[sid].isVisible():
@@ -101,6 +116,19 @@ class ShaderPanel(QWidget):
         editor = ShaderEditorWindow(source, self._renderer)
         self._editors[sid] = editor
         editor.show()
+
+    def _open_text_editor(self, source):
+        from projmap.text_editor import TextEditorWindow
+        sid = id(source)
+        if sid in self._editors and self._editors[sid].isVisible():
+            self._editors[sid].raise_()
+            return
+        editor = TextEditorWindow(source)
+        self._editors[sid] = editor
+        editor.show()
+
+    def _open_editor(self, source):
+        self._open_shader_editor(source)
 
     def _load_image(self):
         path, _ = QFileDialog.getOpenFileName(self, "Load Image", "", _IMAGE_EXTS)

@@ -88,3 +88,15 @@ class OutputWindow(QMainWindow):
         self.resize(960, 540)
         self.widget = OutputWidget(quad, self)
         self.setCentralWidget(self.widget)
+
+    def send_to_screen(self, screen):
+        self.showNormal()
+        handle = self.windowHandle()
+        if handle:
+            handle.setScreen(screen)
+        self.setGeometry(screen.geometry())
+        self.showFullScreen()
+
+    def go_windowed(self):
+        self.showNormal()
+        self.resize(960, 540)

@@ -111,3 +111,8 @@ class ShaderPanel(QWidget):
         path, _ = QFileDialog.getOpenFileName(self, "Load Video", "", _VIDEO_EXTS)
         if path:
             self._add_source(VideoSource(path))
+
+    def register_source(self, source):
+        """Register an externally-created source (e.g. from project load) into the panel."""
+        self._sources.append(source)
+        self._list.addItem(QListWidgetItem(source.name))

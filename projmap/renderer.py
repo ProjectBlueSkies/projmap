@@ -79,16 +79,26 @@ class Renderer:
             self._src_cache[frag_code] = (prog, vao)
         return self._src_cache[frag_code]
 
-    def _render_surface(self, surface, time):
-        prog, vao = self._src_vao(surface.source.frag_code)
+    def _source_texture(self, surface, time):
+        source = surface.source
+        if hasattr(source, 'frag_code'):
+            prog, vao = self._src_vao(source.frag_code)
+            self._src_fbo.use()
+            self._ctx.clear(0, 0, 0)
+            if 'time' in prog:
+                prog['time'] = float(time)
+            if 'resolution' in prog:
+                prog['resolution'] = (SRC_W, SRC_H)
+            vao.render()
+            return self._src_tex
+        else:
+            source.update(self._ctx, time)
+            return source.texture
 
-        self._src_fbo.use()
-        self._ctx.clear(0, 0, 0)
-        if 'time' in prog:
-            prog['time'] = float(time)
-        if 'resolution' in prog:
-            prog['resolution'] = (SRC_W, SRC_H)
-        vao.render()
+    def _render_surface(self, surface, time):
+        tex = self._source_texture(surface, time)
+        if tex is None:
+            return  # source not ready yet (first video frame)
 
         c = surface.quad.corners
         ndc = np.column_stack([
@@ -100,7 +110,7 @@ class Renderer:
         inv_H /= inv_H[2, 2]
 
         self._out_fbo.use()
-        self._src_tex.use(0)
+        tex.use(0)
         self._warp_prog['tex'] = 0
         self._warp_prog['inv_H'].write(inv_H.T.astype(np.float32).tobytes())
         self._warp_vao.render()

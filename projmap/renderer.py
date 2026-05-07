@@ -67,22 +67,26 @@ class Renderer:
 
         self._out_fbo = self._ctx.simple_framebuffer((STAGE_W, STAGE_H))
 
-        # frag_code -> (prog, vao)
+        # id(source) -> (prog, vao)
         self._src_cache: dict = {}
 
-    def _src_vao(self, frag_code):
-        if frag_code not in self._src_cache:
+    def _src_vao(self, source):
+        key = id(source)
+        if key not in self._src_cache:
             prog = self._ctx.program(
-                vertex_shader=_SOURCE_VERT, fragment_shader=frag_code
+                vertex_shader=_SOURCE_VERT, fragment_shader=source.frag_code
             )
             vao = self._ctx.vertex_array(prog, [(self._quad_vbo, '2f', 'in_vert')])
-            self._src_cache[frag_code] = (prog, vao)
-        return self._src_cache[frag_code]
+            self._src_cache[key] = (prog, vao)
+        return self._src_cache[key]
+
+    def invalidate_source(self, source):
+        self._src_cache.pop(id(source), None)
 
     def _source_texture(self, surface, time):
         source = surface.source
         if hasattr(source, 'frag_code'):
-            prog, vao = self._src_vao(source.frag_code)
+            prog, vao = self._src_vao(source)
             self._src_fbo.use()
             self._ctx.clear(0, 0, 0)
             if 'time' in prog:

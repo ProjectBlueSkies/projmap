@@ -16,8 +16,10 @@ class EditorWindow(QMainWindow):
         self.setWindowTitle("projmap — editor")
         self.resize(1440, 810)
 
+        self._renderer = Renderer()
+
         self.canvas = Canvas()
-        self._shader_panel = ShaderPanel(self.canvas)
+        self._shader_panel = ShaderPanel(self.canvas, self._renderer)
         self._shader_panel.setFixedWidth(180)
 
         splitter = QSplitter()
@@ -27,7 +29,6 @@ class EditorWindow(QMainWindow):
         splitter.setStretchFactor(1, 0)
         self.setCentralWidget(splitter)
 
-        self._renderer = Renderer()
         self.output = OutputWindow(self.canvas, self._renderer)
         self.output.show()
         self.output.raise_()

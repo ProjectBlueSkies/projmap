@@ -28,9 +28,8 @@ void main() {
     vec2 uv = h.xy / h.z;
     uv.y = 1.0 - uv.y;
     if (any(lessThan(uv, vec2(0.0))) || any(greaterThan(uv, vec2(1.0))))
-        f_color = vec4(0.0, 0.0, 0.0, 1.0);
-    else
-        f_color = texture(tex, uv);
+        discard;
+    f_color = texture(tex, uv);
 }
 """
 
@@ -58,11 +57,8 @@ class Renderer:
         self._tex = self._ctx.texture((w, h), 3, arr.tobytes())
         self._tex.filter = (moderngl.LINEAR, moderngl.LINEAR)
 
-    def render(self, quad):
-        self._fbo.use()
-        self._ctx.clear(0.0, 0.0, 0.0)
-
-        c = quad.corners
+    def _render_surface(self, surface):
+        c = surface.quad.corners
         ndc = np.column_stack([
             c[:, 0] / STAGE_W * 2 - 1,
             -(c[:, 1] / STAGE_H * 2 - 1),
@@ -70,14 +66,18 @@ class Renderer:
         H = compute_homography(_UV_CORNERS, ndc)
         inv_H = np.linalg.inv(H)
         inv_H /= inv_H[2, 2]
-
         self._tex.use(0)
         self._prog['tex'] = 0
         self._prog['inv_H'].write(inv_H.T.astype(np.float32).tobytes())
         self._vao.render()
 
+    def render(self, surfaces):
+        self._fbo.use()
+        self._ctx.clear(0.0, 0.0, 0.0)
+        for surface in surfaces:
+            self._render_surface(surface)
         raw = self._fbo.read(components=3)
         arr = np.frombuffer(raw, dtype=np.uint8).reshape(STAGE_H, STAGE_W, 3)
-        arr = arr[::-1].copy()  # OpenGL is bottom-up; flip to top-down
+        arr = arr[::-1].copy()
         img = QImage(arr.data, STAGE_W, STAGE_H, STAGE_W * 3, QImage.Format.Format_RGB888)
         return QPixmap.fromImage(img)

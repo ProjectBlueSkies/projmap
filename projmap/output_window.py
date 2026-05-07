@@ -3,11 +3,11 @@ from PySide6.QtWidgets import QLabel, QMainWindow
 
 
 class OutputWindow(QMainWindow):
-    def __init__(self, quad, renderer, parent=None):
+    def __init__(self, canvas, renderer, parent=None):
         super().__init__(parent)
         self.setWindowTitle("projmap — output")
         self.resize(960, 540)
-        self._quad = quad
+        self._canvas = canvas
         self._renderer = renderer
         self._pending_screen = None
 
@@ -17,7 +17,7 @@ class OutputWindow(QMainWindow):
         self.setCentralWidget(self._label)
 
     def refresh(self):
-        pixmap = self._renderer.render(self._quad)
+        pixmap = self._renderer.render(self._canvas.surfaces)
         self._label.setPixmap(
             pixmap.scaled(
                 self._label.size(),

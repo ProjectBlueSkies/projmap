@@ -1,10 +1,13 @@
 from PySide6.QtWidgets import (
-    QFileDialog, QLabel, QListWidget, QListWidgetItem,
-    QPushButton, QVBoxLayout, QWidget,
+    QFileDialog, QInputDialog, QLabel, QListWidget, QListWidgetItem,
+    QMessageBox, QPushButton, QVBoxLayout, QWidget,
 )
 
 from projmap.shaders import BUILTIN_SHADERS, ShaderSource
-from projmap.sources import ImageSource, TextSource, VideoSource
+from projmap.sources import (
+    DesktopSource, ImageSource, TextSource, VideoSource, WindowSource,
+    list_monitors, list_windows,
+)
 
 _IMAGE_EXTS = "Images (*.png *.jpg *.jpeg *.bmp *.tif *.tiff *.webp)"
 _VIDEO_EXTS = "Video (*.mp4 *.mov *.avi *.mkv *.webm *.m4v)"
@@ -55,6 +58,18 @@ class ShaderPanel(QWidget):
         btn_txt = QPushButton("Add Text…")
         btn_txt.clicked.connect(self._new_text)
         layout.addWidget(btn_txt)
+
+        btn_win = QPushButton("Capture Window…")
+        btn_win.clicked.connect(self._capture_window)
+        layout.addWidget(btn_win)
+
+        btn_screen = QPushButton("Capture Screen…")
+        btn_screen.clicked.connect(self._capture_screen)
+        layout.addWidget(btn_screen)
+
+        btn_desk = QPushButton("Virtual Desktop")
+        btn_desk.clicked.connect(self._add_desktop)
+        layout.addWidget(btn_desk)
 
         canvas.surface_selected.connect(self._sync)
 
@@ -158,6 +173,55 @@ class ShaderPanel(QWidget):
         path, _ = QFileDialog.getOpenFileName(self, "Load Video", "", _VIDEO_EXTS)
         if path:
             self._add_source(VideoSource(path))
+
+    def _capture_window(self):
+        wins = list_windows()
+        if not wins:
+            QMessageBox.information(
+                self, "Capture Window",
+                "No windows found.\n\nLive window capture requires an X11 session "
+                "and the 'wmctrl' tool (sudo apt install wmctrl).",
+            )
+            return
+        labels = [
+            f"{w['title'] or '(untitled)'}  —  {w['wm_class'].split('.')[-1]}"
+            for w in wins
+        ]
+        label, ok = QInputDialog.getItem(
+            self, "Capture Window", "Select a window to project:", labels, 0, False)
+        if not ok:
+            return
+        w = wins[labels.index(label)]
+        self._add_source(WindowSource(w['xid'], w['title'], w['wm_class']))
+
+    def _capture_screen(self):
+        mons = list_monitors()
+        if not mons:
+            QMessageBox.information(
+                self, "Capture Screen",
+                "No monitors found.\n\nScreen capture mirrors a real display onto "
+                "the projector and requires a GNOME/Mutter Wayland session.",
+            )
+            return
+        # Primary first, then by connector name.
+        mons.sort(key=lambda m: (not m.get('primary'), m.get('connector', '')))
+        labels = [
+            f"{m['connector']}  {m['width']}×{m['height']}"
+            + ("  (primary)" if m.get('primary') else "")
+            for m in mons
+        ]
+        label, ok = QInputDialog.getItem(
+            self, "Capture Screen",
+            "Select a screen to mirror onto the projector\n"
+            "(pick a screen other than the projector's to avoid feedback):",
+            labels, 0, False)
+        if not ok:
+            return
+        m = mons[labels.index(label)]
+        self._add_source(DesktopSource(mode='monitor', connector=m['connector']))
+
+    def _add_desktop(self):
+        self._add_source(DesktopSource())
 
     def register_source(self, source):
         """Register an externally-created source (e.g. from project load) into the panel."""

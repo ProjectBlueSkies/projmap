@@ -49,6 +49,16 @@ class OutputWindow(QMainWindow):
         self.activateWindow()
         self.showFullScreen()
 
+    def set_always_on_top(self, on):
+        was_fullscreen = self.isFullScreen()
+        self.setWindowFlag(Qt.WindowType.WindowStaysOnTopHint, on)
+        # Changing flags hides the window; re-show in its prior mode.
+        if was_fullscreen:
+            self.showFullScreen()
+        else:
+            self.show()
+        self.raise_()
+
     def go_windowed(self):
         self._pending_screen = None
         self.showNormal()

@@ -5,7 +5,9 @@ import numpy as np
 
 from projmap.quad import Quad
 from projmap.shaders import BUILTIN_SHADERS, ShaderSource
-from projmap.sources import ImageSource, TextSource, VideoSource
+from projmap.sources import (
+    DesktopSource, ImageSource, TextSource, VideoSource, WindowSource, list_windows,
+)
 from projmap.surface import Surface
 
 VERSION = 1
@@ -25,6 +27,22 @@ def _ser_source(source):
         return {"type": "image", "path": str(source.path)}
     if isinstance(source, VideoSource):
         return {"type": "video", "path": str(source.path)}
+    if isinstance(source, WindowSource):
+        return {
+            "type": "window",
+            "title": source.title,
+            "wm_class": source.wm_class,
+            "fps": source.fps,
+        }
+    if isinstance(source, DesktopSource):
+        return {
+            "type": "desktop",
+            "width": source.cap_w,
+            "height": source.cap_h,
+            "fps": source.fps,
+            "mode": getattr(source, "mode", "virtual"),
+            "connector": getattr(source, "connector", None),
+        }
     if isinstance(source, TextSource):
         return {
             "type": "text",
@@ -56,6 +74,26 @@ def _deser_source(data):
             print(f"Warning: video not found: {p}")
             return BUILTIN_SHADERS[0]
         return VideoSource(p)
+    if t == "window":
+        title = data.get("title", "")
+        wm_class = data.get("wm_class", "")
+        match = next(
+            (w for w in list_windows()
+             if (title and w["title"] == title) or (wm_class and w["wm_class"] == wm_class)),
+            None,
+        )
+        if match is None:
+            print(f"Warning: window not found, skipping capture source: {title or wm_class}")
+            return BUILTIN_SHADERS[0]
+        return WindowSource(match["xid"], title, wm_class, fps=data.get("fps", 12))
+    if t == "desktop":
+        return DesktopSource(
+            width=data.get("width", 1280),
+            height=data.get("height", 720),
+            fps=data.get("fps", 15),
+            mode=data.get("mode", "virtual"),
+            connector=data.get("connector"),
+        )
     if t == "text":
         def _c(val, default):
             v = list(val) if val is not None else list(default)

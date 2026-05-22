@@ -189,7 +189,7 @@ class EditorWindow(QMainWindow):
         del_action.triggered.connect(self.canvas.delete_active)
         surfaces_menu.addAction(del_action)
 
-        output_menu = self.menuBar().addMenu("Output")
+        output_menu = self.menuBar().addMenu("Display")
         self._screen_group = QActionGroup(self)
         self._screen_group.setExclusive(True)
         self._screen_menu = output_menu.addMenu("Send to Screen")
@@ -199,6 +199,25 @@ class EditorWindow(QMainWindow):
         windowed = QAction("Windowed", self)
         windowed.triggered.connect(self._go_windowed)
         output_menu.addAction(windowed)
+
+        self._on_top_action = QAction("Always on Top", self, checkable=True)
+        self._on_top_action.toggled.connect(self.output.set_always_on_top)
+        output_menu.addAction(self._on_top_action)
+
+        output_menu.addSeparator()
+        layout_action = QAction("Display Layout…", self)
+        layout_action.setShortcut(QKeySequence("Ctrl+L"))
+        layout_action.triggered.connect(self._open_display_layout)
+        output_menu.addAction(layout_action)
+
+    def _open_display_layout(self):
+        from projmap.display_panel import DisplayLayoutDialog
+        if getattr(self, "_layout_dialog", None) is not None and self._layout_dialog.isVisible():
+            self._layout_dialog.raise_()
+            return
+        self._layout_dialog = DisplayLayoutDialog(
+            self.canvas, self._shader_panel._sources, self)
+        self._layout_dialog.show()
 
     def _refresh_screens(self):
         self._screen_menu.clear()

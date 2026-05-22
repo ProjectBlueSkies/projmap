@@ -49,7 +49,14 @@ _UV_CORNERS = np.array([[0, 0], [1, 0], [1, 1], [0, 1]], dtype=np.float64)
 
 class Renderer:
     def __init__(self):
-        self._ctx = moderngl.create_standalone_context()
+        # Prefer EGL for the offscreen context: it needs no X server, so the app
+        # works on a headless / Wayland host (e.g. the Mac Mini over SSH or via
+        # autostart). Fall back to the default (GLX/X11) backend where EGL
+        # offscreen isn't available.
+        try:
+            self._ctx = moderngl.create_standalone_context(backend="egl")
+        except Exception:
+            self._ctx = moderngl.create_standalone_context()
 
         verts = np.array([-1,-1, 1,-1, 1,1, -1,-1, 1,1, -1,1], dtype=np.float32)
         self._quad_vbo = self._ctx.buffer(verts.tobytes())
